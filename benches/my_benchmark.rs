@@ -94,7 +94,7 @@ pub fn bench_add_range(c: &mut Criterion) {
             |b, &batch_size| {
                 let mut bm = RoaringBitmap::new();
                 b.iter(|| {
-                    bm.extend(0..batch_size);
+                    bm.insert_range(0..batch_size);
                 });
             },
         );
@@ -122,7 +122,7 @@ pub fn bench_collect_uint(c: &mut Criterion) {
             &batch_size,
             |b, &batch_size| {
                 let mut bm = RoaringBitmap::new();
-                bm.extend(0..batch_size);
+                bm.insert_range(0..batch_size);
                 b.iter(|| {
                     let _: Vec<u32> = bm.iter().collect();
                 });
