@@ -113,7 +113,7 @@ pub fn bench_collect_uint(c: &mut Criterion) {
                 let mut bm = croaring::Bitmap::create();
                 bm.add_range(0..batch_size as u64);
                 b.iter(|| {
-                    let _ = &bm.to_vec().iter().map(|v| *v as usize).collect::<Vec<_>>();
+                    let _: Vec<u32> = bm.iter().collect();
                 });
             },
         );
