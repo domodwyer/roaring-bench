@@ -84,7 +84,7 @@ pub fn bench_add_range(c: &mut Criterion) {
             |b, &batch_size| {
                 let mut bm = croaring::Bitmap::create();
                 b.iter(|| {
-                    bm.add_range(0..batch_size as u64);
+                    bm.add_range(0..batch_size);
                 });
             },
         );
@@ -111,7 +111,7 @@ pub fn bench_collect_uint(c: &mut Criterion) {
             &batch_size,
             |b, &batch_size| {
                 let mut bm = croaring::Bitmap::create();
-                bm.add_range(0..batch_size as u64);
+                bm.add_range(0..batch_size);
                 b.iter(|| {
                     let _: Vec<u32> = bm.iter().collect();
                 });
