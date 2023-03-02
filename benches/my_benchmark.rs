@@ -170,8 +170,10 @@ pub fn bench_union(c: &mut Criterion) {
             BenchmarkId::new("croaring", batch_size),
             &batch_size,
             |b, &batch_size| {
-                let (set_a, set_b): (croaring::Bitmap, croaring::Bitmap) =
+                let (mut set_a, mut set_b): (croaring::Bitmap, croaring::Bitmap) =
                     (0..batch_size).partition(|&v| v < (batch_size / 2));
+                set_a.run_optimize();
+                set_b.run_optimize();
                 b.iter(|| black_box(set_a.and(&set_b)));
             },
         );
@@ -185,6 +187,39 @@ pub fn bench_union(c: &mut Criterion) {
                 b.iter(|| black_box((&set_a).bitand(&set_b)));
             },
         );
+    }
+    group.finish();
+
+    let mut group = c.benchmark_group("rle_optimise_suitable");
+    for &batch_size in &N {
+        group.throughput(Throughput::Elements(batch_size as u64));
+        group.bench_with_input(
+            BenchmarkId::new("croaring", batch_size),
+            &batch_size,
+            |b, &batch_size| {
+                let mut x = (0..batch_size).collect::<croaring::Bitmap>();
+                b.iter(|| black_box(x.run_optimize()));
+            },
+        );
+        // roaring does not support RLE
+    }
+    group.finish();
+
+    let mut group = c.benchmark_group("rle_optimise_unsuitable");
+    for &batch_size in &N {
+        group.throughput(Throughput::Elements(batch_size as u64));
+        group.bench_with_input(
+            BenchmarkId::new("croaring", batch_size),
+            &batch_size,
+            |b, &batch_size| {
+                let mut x = (0..)
+                    .filter(|x| (x % 2) == 0)
+                    .take(batch_size as _)
+                    .collect::<croaring::Bitmap>();
+                b.iter(|| black_box(x.run_optimize()));
+            },
+        );
+        // roaring does not support RLE
     }
     group.finish();
 }
