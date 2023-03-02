@@ -136,7 +136,8 @@ pub fn bench_collect_uint(c: &mut Criterion) {
 
 /// Benchmark performing a set union of two sets, both of size "batch_size / 2".
 pub fn bench_union(c: &mut Criterion) {
-    let mut group = c.benchmark_group("union");
+    // In this case, there are no "runs" in the sets, so RLE won't help.
+    let mut group = c.benchmark_group("union_no_rle");
     for &batch_size in &N {
         group.throughput(Throughput::Elements(batch_size as u64));
         group.bench_with_input(
@@ -154,6 +155,32 @@ pub fn bench_union(c: &mut Criterion) {
             |b, &batch_size| {
                 let (set_a, set_b): (RoaringBitmap, RoaringBitmap) =
                     (0..batch_size).partition(|v| (v % 2) == 0);
+
+                b.iter(|| black_box((&set_a).bitand(&set_b)));
+            },
+        );
+    }
+    group.finish();
+
+    // In this case, the sets are contiguous and RLE should be very effective.
+    let mut group = c.benchmark_group("union_with_rle");
+    for &batch_size in &N {
+        group.throughput(Throughput::Elements(batch_size as u64));
+        group.bench_with_input(
+            BenchmarkId::new("croaring", batch_size),
+            &batch_size,
+            |b, &batch_size| {
+                let (set_a, set_b): (croaring::Bitmap, croaring::Bitmap) =
+                    (0..batch_size).partition(|&v| v < (batch_size / 2));
+                b.iter(|| black_box(set_a.and(&set_b)));
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("roaring", batch_size),
+            &batch_size,
+            |b, &batch_size| {
+                let (set_a, set_b): (RoaringBitmap, RoaringBitmap) =
+                    (0..batch_size).partition(|&v| v < (batch_size / 2));
 
                 b.iter(|| black_box((&set_a).bitand(&set_b)));
             },
