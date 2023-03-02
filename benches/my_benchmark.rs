@@ -1,7 +1,9 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use std::ops::BitAnd;
+
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use roaring::RoaringBitmap;
 
-static N: [u32; 3] = [10, 100, 1000];
+static N: [u32; 5] = [10, 100, 1_000, 100_000, 1_000_000];
 
 pub fn bench_add(c: &mut Criterion) {
     let mut group = c.benchmark_group("add_elements_sequential");
@@ -132,11 +134,40 @@ pub fn bench_collect_uint(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark performing a set union of two sets, both of size "batch_size / 2".
+pub fn bench_union(c: &mut Criterion) {
+    let mut group = c.benchmark_group("union");
+    for &batch_size in &N {
+        group.throughput(Throughput::Elements(batch_size as u64));
+        group.bench_with_input(
+            BenchmarkId::new("croaring", batch_size),
+            &batch_size,
+            |b, &batch_size| {
+                let (set_a, set_b): (croaring::Bitmap, croaring::Bitmap) =
+                    (0..batch_size).partition(|v| (v % 2) == 0);
+                b.iter(|| black_box(set_a.and(&set_b)));
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("roaring", batch_size),
+            &batch_size,
+            |b, &batch_size| {
+                let (set_a, set_b): (RoaringBitmap, RoaringBitmap) =
+                    (0..batch_size).partition(|v| (v % 2) == 0);
+
+                b.iter(|| black_box((&set_a).bitand(&set_b)));
+            },
+        );
+    }
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_add,
     bench_add_range,
     bench_add_shuffled,
-    bench_collect_uint
+    bench_collect_uint,
+    bench_union,
 );
 criterion_main!(benches);
